@@ -15,6 +15,7 @@ This chapter answers frequently asked questions regarding data privacy, account 
   - [6. How do I change the clone's icon?](#6-how-do-i-change-the-clones-icon)
   - [7. How do communication clones (e.g., WeChat, QQ) display Menu Bar icons and receive background messages?](#7-how-do-communication-clones-eg-wechat-qq-display-menu-bar-icons-and-receive-background-messages)
 - [System Diagnostics (Doctor Tab)](#system-diagnostics-doctor-tab)
+- [ChatGPT clone does not respond after creation](#chatgpt-clone-does-not-respond-after-creation)
 - [Reporting Issues to GitHub (Step-by-Step Guide)](#reporting-issues-to-github-step-by-step-guide)
   - [Step 1: Open Clone Details](#step-1-open-clone-details)
   - [Step 2: Copy Application Information from Clone Details](#step-2-copy-application-information-from-clone-details)
@@ -110,6 +111,18 @@ Instant messaging apps like WeChat and QQ support residing in the macOS top Menu
 
 > [!TIP]
 > **Under the Hood**: Communication apps like WeChat and Telegram rely on ATBClone's **`dylib` native in-process injection mode** (keep `auto` or select `dylib` when cloning). This avoids `execv` process replacement, which alters process version (`PIDVersion`) and breaks macOS Notification Center (`usernoted`) and Menu Bar status item (`MenuBarAgent`) registration. If `launcher` mode is accidentally selected, notifications and menu bar status icons may be silently suppressed by macOS.
+
+---
+
+## ChatGPT clone does not respond after creation
+
+Check the installed ATBClone version and any matching YAML override in `~/ATBClone/recipes/`. In one local investigation, a clone created with ATBClone 1.3.0 and an old `com.openai.codex.yaml` did not respond. Rebuilding with the 1.4.0 source engine and built-in recipe restored the independent sign-in screen. Updating the application alone does not merge or replace user recipes.
+
+If an update reports `Operation not permitted`, check whether the clone bundle still exists and back up its data before addressing the copy failure. A successful request to open the bundle does not prove startup succeeded; verify the actual window and backend services.
+
+The default Codex clone configuration directory is `~/ATBClone/Data/<CloneName>/Codex`, set through `CODEX_HOME`. For example, configure `ChatGPT2` in `~/ATBClone/Data/ChatGPT2/Codex/config.toml`, then fully quit and restart the clone.
+
+See the [investigation, recovery steps, and verification limits (Chinese)](../../troubleshooting/chatgpt-clone-startup.md). API requests after authentication were not tested in this investigation.
 
 ---
 

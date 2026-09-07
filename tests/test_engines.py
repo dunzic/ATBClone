@@ -191,14 +191,13 @@ class TestSoftCloneEngine:
             assert 'execv(real_bin, new_argv);' in script
 
 
-    def test_soft_clone_failure_cleans_up_and_reraises(self, sample_task):
-        with patch("atbclone.executor.runner.Runner.run", side_effect=[CloneError("Permission denied"), None]) as mock_run:
+    def test_soft_clone_failure_does_not_delete_restored_bundle(self, sample_task):
+        with patch("atbclone.executor.runner.Runner.run", side_effect=CloneError("Permission denied")) as mock_run:
             with pytest.raises(CloneError) as exc_info:
                 SoftCloneEngine.execute(sample_task, needs_admin=False)
             assert "Permission denied" in str(exc_info.value)
-            assert mock_run.call_count == 2
-            cleanup_call = mock_run.call_args_list[1]
-            assert "rm -rf /Applications/TestApp2.app" in cleanup_call[0][0]
+            mock_run.assert_called_once()
+            assert "trap atb_finish EXIT" in mock_run.call_args[0][0]
 
 
 class TestHardCloneEngine:
@@ -327,15 +326,14 @@ class TestHardCloneEngine:
             assert 'setenv("TMPDIR", "/Users/test/Library/Application Support/TestApp2/Tmp", 1);' in script
             assert "mv /Applications/TestApp2.app/Contents/MacOS/TestApp /Applications/TestApp2.app/Contents/MacOS/TestApp.bin" not in script
 
-    def test_hard_clone_failure_cleans_up_and_reraises(self, sample_task):
+    def test_hard_clone_failure_does_not_delete_restored_bundle(self, sample_task):
 
-        with patch("atbclone.executor.runner.Runner.run", side_effect=[CloneError("Disk full"), None]) as mock_run:
+        with patch("atbclone.executor.runner.Runner.run", side_effect=CloneError("Disk full")) as mock_run:
             with pytest.raises(CloneError) as exc_info:
                 HardCloneEngine.execute(sample_task, needs_admin=False)
             assert "Disk full" in str(exc_info.value)
-            assert mock_run.call_count == 2
-            cleanup_call = mock_run.call_args_list[1]
-            assert "rm -rf /Applications/TestApp2.app" in cleanup_call[0][0]
+            mock_run.assert_called_once()
+            assert "trap atb_finish EXIT" in mock_run.call_args[0][0]
 
 
 class TestBuildIconCmd:

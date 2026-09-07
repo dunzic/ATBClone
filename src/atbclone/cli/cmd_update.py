@@ -1,6 +1,5 @@
 """CLI command for updating cloned applications."""
 
-import shlex
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +13,7 @@ from atbclone.core.engines import HardCloneEngine, SoftCloneEngine
 from atbclone.core.i18n import t
 from atbclone.core.logger import get_logger
 from atbclone.core.state import StateManager
-from atbclone.executor.runner import CloneError, Runner
+from atbclone.executor.runner import CloneError
 from atbclone.recipes.loader import RecipeLoader
 from atbclone.validation import validate_deletion_target
 
@@ -50,20 +49,6 @@ def update(clone_name: str) -> None:
 
     logger.info(f"Starting update for clone '{clone_name}' (source='{record.source_path}', strategy='{record.strategy}')")
     console.print(t("update_starting", clone_name=clone_name))
-
-    lines = [
-        "#!/bin/bash",
-        "set -e",
-        f"rm -rf {shlex.quote(str(dest_path))}",
-    ]
-    script = "\n".join(lines) + "\n"
-
-    try:
-        Runner.run(script, needs_admin)
-    except (CloneError, Exception) as e:
-        logger.error(f"Failed to clear old bundle for '{clone_name}': {e}")
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        sys.exit(1)
 
     try:
         info = AppInspector.inspect(record.source_path)

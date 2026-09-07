@@ -108,9 +108,6 @@ class CloneService:
                 # Guard the tamperable state file before any rm -rf.
                 validate_deletion_target(str(dest_path), expect_bundle=True, field="dest_path")
 
-                script = f"#!/bin/bash\nset -e\nrm -rf {shlex.quote(str(dest_path))}\n"
-                Runner.run(script, needs_admin)
-
                 info = AppInspector.inspect(record.source_path)
                 recipe = RecipeLoader.match(info.bundle_id, app_path=record.source_path)
                 data_dir = Path(record.data_dir)
