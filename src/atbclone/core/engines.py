@@ -7,10 +7,11 @@ import struct
 import textwrap
 
 from atbclone.core.clone_task import CloneTask
+from atbclone.core.bundle_transaction import replace_bundle
 from atbclone.core.locale import build_language_wrapper_snippet
 from atbclone.core.logger import get_logger
 from atbclone.validation import escape_double_quoted
-from atbclone.executor.runner import CloneError, Runner
+from atbclone.executor.runner import CloneError
 
 logger = get_logger("core.engines")
 
@@ -641,17 +642,11 @@ chmod -R u+w {dst_app} 2>/dev/null || true
 {icon_cmd}{c_launcher_cmd}
 {pref_seeding}
 {symlink_snippet}
-codesign --force --deep --sign - {dst_app} 2>/dev/null || true
+codesign --force --deep --sign - {dst_app}
+codesign -vv --deep --strict {dst_app}
 {lsregister_cmd}
 """
-        try:
-            Runner.run(script, needs_admin)
-        except Exception:
-            try:
-                Runner.run(f"rm -rf {dst_app}", needs_admin)
-            except (CloneError, OSError):
-                pass
-            raise
+        replace_bundle(script, task.dest_path, needs_admin)
 
 
 class HardCloneEngine(CloneEngine):
@@ -1416,12 +1411,4 @@ chmod -R u+w {dst} 2>/dev/null || true
 {lsregister_cmd}
 """
 
-        try:
-            Runner.run(script, needs_admin)
-        except Exception:
-            try:
-                Runner.run(f"rm -rf {dst}", needs_admin)
-            except (CloneError, OSError):
-                pass
-            raise
-
+        replace_bundle(script, task.dest_path, needs_admin)

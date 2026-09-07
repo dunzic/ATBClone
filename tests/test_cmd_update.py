@@ -127,7 +127,7 @@ def test_update_success_hard_clone(
 ):
     runner = CliRunner()
     with patch("atbclone.cli.cmd_update.StateManager.get", return_value=mock_record_user_dir), \
-         patch("atbclone.cli.cmd_update.Runner.run") as mock_runner, \
+         patch("atbclone.executor.runner.Runner.run") as mock_runner, \
          patch("atbclone.cli.cmd_update.AppInspector.inspect", return_value=mock_app_info) as mock_inspect, \
          patch("atbclone.cli.cmd_update.RecipeLoader.match", return_value=mock_hard_recipe) as mock_match, \
          patch("atbclone.cli.cmd_update.HardCloneEngine.execute") as mock_hard_exec, \
@@ -139,12 +139,8 @@ def test_update_success_hard_clone(
         assert "Updating WeChat2..." in result.output
         assert "Success! Updated WeChat2" in result.output
 
-        # Verify step 1: rm -rf old .app
-        mock_runner.assert_called_once()
-        script, needs_admin = mock_runner.call_args[0]
-        assert needs_admin is False
-        assert f"rm -rf {mock_record_user_dir.dest_path}" in script
-        assert mock_record_user_dir.data_dir not in script
+        # The engine owns replacement/rollback; the CLI must not delete first.
+        mock_runner.assert_not_called()
 
         # Verify step 2: inspect and clone
         mock_inspect.assert_called_once_with(mock_record_user_dir.source_path)
@@ -182,7 +178,7 @@ def test_update_success_soft_clone(
     )
 
     with patch("atbclone.cli.cmd_update.StateManager.get", return_value=mock_record_soft_clone), \
-         patch("atbclone.cli.cmd_update.Runner.run") as mock_runner, \
+         patch("atbclone.executor.runner.Runner.run") as mock_runner, \
          patch("atbclone.cli.cmd_update.AppInspector.inspect", return_value=chrome_info), \
          patch("atbclone.cli.cmd_update.RecipeLoader.match", return_value=mock_soft_recipe), \
          patch("atbclone.cli.cmd_update.HardCloneEngine.execute") as mock_hard_exec, \
@@ -206,10 +202,11 @@ def test_update_success_soft_clone(
         mock_state_add.assert_called_once()
 
 
-def test_update_rm_fails(mock_record_user_dir: CloneRecord):
+def test_update_inspection_fails_before_touching_bundle(mock_record_user_dir: CloneRecord):
     runner = CliRunner()
     with patch("atbclone.cli.cmd_update.StateManager.get", return_value=mock_record_user_dir), \
-         patch("atbclone.cli.cmd_update.Runner.run", side_effect=CloneError("Permission denied")), \
+         patch("atbclone.cli.cmd_update.AppInspector.inspect", side_effect=PermissionError("Permission denied")), \
+         patch("atbclone.executor.runner.Runner.run") as mock_runner, \
          patch("atbclone.cli.cmd_update.HardCloneEngine.execute") as mock_hard_exec, \
          patch("atbclone.cli.cmd_update.StateManager.add") as mock_state_add:
 
@@ -220,6 +217,7 @@ def test_update_rm_fails(mock_record_user_dir: CloneRecord):
 
         mock_hard_exec.assert_not_called()
         mock_state_add.assert_not_called()
+        mock_runner.assert_not_called()
 
 
 def test_update_engine_fails(
@@ -229,7 +227,7 @@ def test_update_engine_fails(
 ):
     runner = CliRunner()
     with patch("atbclone.cli.cmd_update.StateManager.get", return_value=mock_record_user_dir), \
-         patch("atbclone.cli.cmd_update.Runner.run"), \
+         patch("atbclone.executor.runner.Runner.run"), \
          patch("atbclone.cli.cmd_update.AppInspector.inspect", return_value=mock_app_info), \
          patch("atbclone.cli.cmd_update.RecipeLoader.match", return_value=mock_hard_recipe), \
          patch("atbclone.cli.cmd_update.HardCloneEngine.execute", side_effect=CloneError("Re-clone failed")), \
@@ -249,7 +247,7 @@ def test_update_admin_elevation(
 ):
     runner = CliRunner()
     with patch("atbclone.cli.cmd_update.StateManager.get", return_value=mock_record_admin_dir), \
-         patch("atbclone.cli.cmd_update.Runner.run") as mock_runner, \
+         patch("atbclone.executor.runner.Runner.run") as mock_runner, \
          patch("atbclone.cli.cmd_update.AppInspector.inspect", return_value=mock_app_info), \
          patch("atbclone.cli.cmd_update.RecipeLoader.match", return_value=mock_hard_recipe), \
          patch("atbclone.cli.cmd_update.HardCloneEngine.execute") as mock_hard_exec, \
@@ -258,9 +256,7 @@ def test_update_admin_elevation(
         result = runner.invoke(cli, ["update", "WeChat2"])
         assert result.exit_code == 0
 
-        mock_runner.assert_called_once()
-        _, needs_admin = mock_runner.call_args[0]
-        assert needs_admin is True
+        mock_runner.assert_not_called()
 
         mock_hard_exec.assert_called_once()
         _, engine_needs_admin = mock_hard_exec.call_args[0]
@@ -275,7 +271,7 @@ def test_update_fallback_bundle_id_when_empty(
     mock_record_user_dir.new_bundle_id = ""
     runner = CliRunner()
     with patch("atbclone.cli.cmd_update.StateManager.get", return_value=mock_record_user_dir), \
-         patch("atbclone.cli.cmd_update.Runner.run"), \
+         patch("atbclone.executor.runner.Runner.run"), \
          patch("atbclone.cli.cmd_update.AppInspector.inspect", return_value=mock_app_info), \
          patch("atbclone.cli.cmd_update.RecipeLoader.match", return_value=mock_hard_recipe), \
          patch("atbclone.cli.cmd_update.HardCloneEngine.execute") as mock_hard_exec, \
